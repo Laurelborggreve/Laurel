@@ -3,17 +3,17 @@
 DCC_sim.py
 
 Purpose:
-    Purpose = Simulate data from a multivariate GARCH DCC model  
+    Purpose = Simulate data from a multivariate GARCH DCC model
 
     Model = The Dynamic Conditional Correlation (DCC) model is given by:
     H(t) = D(t) * R(t) * D(t)
     D(t)^2 = diag{w(i)} + diag{k(i)} * (r(t-1)*r(t-1)') * (diag{labda(i)}*D(t-1)^2)     OR    D(t) = diag{sqrt(h(it))}
     Q(t) = (1 - alpha - beta) * S + (alpha * eps(t-1) * eps(t-1)') + (beta * Q(t-1))
     R(t) = diag{Q(t)}^-0.5 * Q(t) * diag{Q(t)}^-0.5
-    
+
 
 Version:
-    0       
+    0
 
 Date:
     28-04-2018
@@ -43,22 +43,67 @@ def DCC(dOmega, dAlpha, dBeta, iN, mS):
       mH      conditional covariance matrix
       mR      conditional correlation matrix of standardized disturbances eps(t)
       mS      unconditional covariance of epsilons
-      
+
     """
      mH = np.zeros(shape=(iN,iN))
      mQ = np.zeros(shape=(iN,iN))
      mR = np.zeros(shape=(iN,iN))
-     
-        
+
+
     # Estimation
     for t in range(iN):
         mQ[t] = (1 - dAlpha - dBeta) * mS + (dAlpha * (vEps[t-1] * np.transpose(vEps[t-1]))) + (dBeta * mQ[t-1])
         mR[t] = np.diagonal((1/mQ[t]) * mQ[t] * np.diagonal(1/mQ[t]))
         mH[t] = mD[t] * mR[t] * mD[t]
-        
+
     return (mQ, mR, mH)
 
-    
+
+def GenrGARCH(dOmega, dAlpha, dBeta, iN):
+    """
+    Purpose:
+      Simulate
+
+    Inputs:
+      ...
+
+    Return value:
+      vY      iN vector with observations
+      vS2     iN vector with variances
+    """
+    dS2 = dOmega/(1 - dAlpha - dBeta)
+
+    vEps = np.random.normal(size=iN);
+
+    # Define Time Series Vector
+    vS2 = np.zeros_like(vEps);
+    vY = np.zeros_like(vEps);
+
+    # Estimation
+    for t in range(iN):
+        vY[t] = np.sqrt(dS2) * vEps[t]
+        vS2[t]= dS2
+        # Update
+        dS2 = dOmega + dAlpha * vY[t]**2 + dBeta * dS2
+
+    return (vY, vS2)
+
+def mS(iN, vS2):
+    # Create mD
+    mD = np.zeros((iN,iN), int)
+
+    for t in range(iN):
+        mD[t] = np.fill_diagonal(mD, vS2)
+
+    return (mD)
+
+    # Create vEps
+    vEps = vS2 * vY
+
+    # Create mS
+    mS = np.zeros(shape=(iN,iN))
+    mS = np.cov(vEps, (np.transpose(vEps)))
+    return mS
 
 ###########################################################
 ### Output(vY, vS2)
@@ -92,24 +137,14 @@ def main():
     dOmega = 0.1
     dAlpha = 0.05
     dBeta = 0.94
-    
-    # Create mD
-    mD = np.zeros((iN,iN), int)
-    
-    for t in range(iN):
-        mD[t] = np.fill_diagonal(mD, vS2)
-        
-    return (mD)
 
-    # Create vEps
-    vEps = vS2 * vY 
-    
-    # Create mS
-    mS = np.zeros(shape=(iN,iN))
-    mS = np.cov(vEps, (np.transpose(vEps)))
-    
+    # GenrGARCH
+    (vY, vS2)= GenrGARCH(dOmega, dAlpha, dBeta, iN)
 
-    # Estimation
+    # compute mS
+    mS = mS(iN, vS2, vY)
+
+    # Estimation - DCC
     (mQ, mR, mH)= dCC(dOmega, dAlpha, dBeta, iN, mS)
 
     # Output
@@ -119,4 +154,3 @@ def main():
 ### start main
 if __name__ == "__main__":
     main()
-
