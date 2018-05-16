@@ -31,7 +31,7 @@ import matplotlib.pyplot as pltasdasdasd
 ###########################################################
 ### DCC(dOmega, dAlpha, dBeta, iN, mS):
 
-def DCC(dOmega, dAlpha, dBeta, iN, mS):
+def dCC(dOmega, dAlpha, dBeta, iN, mS, vEps):
     """
     Purpose:
       Simulate
@@ -45,19 +45,35 @@ def DCC(dOmega, dAlpha, dBeta, iN, mS):
       mS      unconditional covariance of epsilons
 
     """
-     mH = np.zeros(shape=(iN,iN))
-     mQ = np.zeros(shape=(iN,iN))
-     mR = np.zeros(shape=(iN,iN))
 
+    mQ = np.zeros(shape=(iN,iN))
+    mR = np.zeros(shape=(iN,iN))
+    mH = np.zeros(shape=(iN,iN))
 
-    # Estimation
-    for t in range(iN):
-        mQ[t] = (1 - dAlpha - dBeta) * mS + (dAlpha * (vEps[t-1] * np.transpose(vEps[t-1]))) + (dBeta * mQ[t-1])
-        mR[t] = np.diagonal((1/mQ[t]) * mQ[t] * np.diagonal(1/mQ[t]))
-        mH[t] = mD[t] * mR[t] * mD[t]
+    mQ = computeMQ(mQ, iN, dAlpha, dBeta, mS, vEps)
+    mR = computeMR(mR, mQ, iN)
+    mH = computeMH(mH, mR, mD, iN)
+
+    print(mQ)
+    exit()
 
     return (mQ, mR, mH)
 
+
+def computeMQ(mQ, iN, dAlpha, dBeta, mS, vEps):
+    for t in range(iN):
+        # mQ[t] = (1 - dAlpha - dBeta) * mS + (dAlpha * (vEps[t-1] * np.transpose(vEps[t-1]))) + (dBeta * mQ[t-1])
+    return mQ
+
+def computeMR(mR, mQ):
+    for t in range(iN):
+        # mR[t] = np.diagonal((1/mQ[t]) * mQ[t] * np.diagonal(1/mQ[t]))
+    return mR
+
+def computeMH(mH, mR, mD):
+    for t in range(iN):
+        # mH[t] = mD[t] * mR[t] * mD[t]
+    return mH
 
 def GenrGARCH(dOmega, dAlpha, dBeta, iN):
     """
@@ -88,14 +104,11 @@ def GenrGARCH(dOmega, dAlpha, dBeta, iN):
 
     return (vY, vS2)
 
-def mS(iN, vS2):
+def computemS(iN, vS2, vY):
     # Create mD
-    mD = np.zeros((iN,iN), int)
-
-    for t in range(iN):
-        mD[t] = np.fill_diagonal(mD, vS2)
-
-    return (mD)
+    #
+    mD = np.zeros((iN,iN), float)
+    np.fill_diagonal(mD, vS2)
 
     # Create vEps
     vEps = vS2 * vY
@@ -103,7 +116,7 @@ def mS(iN, vS2):
     # Create mS
     mS = np.zeros(shape=(iN,iN))
     mS = np.cov(vEps, (np.transpose(vEps)))
-    return mS
+    return (mS, vEps)
 
 ###########################################################
 ### Output(vY, vS2)
@@ -142,10 +155,10 @@ def main():
     (vY, vS2)= GenrGARCH(dOmega, dAlpha, dBeta, iN)
 
     # compute mS
-    mS = mS(iN, vS2, vY)
+    (mS, vEps) = computemS(iN, vS2, vY)
 
-    # Estimation - DCC
-    (mQ, mR, mH)= dCC(dOmega, dAlpha, dBeta, iN, mS)
+    # Estimation - dCC
+    (mQ, mR, mH)= dCC(dOmega, dAlpha, dBeta, iN, mS, vEps)
 
     # Output
     Output(mQ, mR, mH)
