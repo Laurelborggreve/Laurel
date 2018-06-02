@@ -7,10 +7,9 @@ Purpose:
 
     Model = The Dynamic Conditional Correlation (DCC) model is given by:
     H(t) = D(t) * R(t) * D(t)
-    D(t)^2 = diag{w(i)} + diag{k(i)} * (r(t-1)*r(t-1)') * (diag{labda(i)}*D(t-1)^2)     OR    D(t) = diag{sqrt(h(it))}
+    D(t)^2 = diag{w(i)} + diag{k(i)} * (r(t-1)*r(t-1)') * (diag{labda(i)}*D(t-1)^2)
     Q(t) = (1 - alpha - beta) * S + (alpha * eps(t-1) * eps(t-1)') + (beta * Q(t-1))
-    R(t) = diag{Q(t)}^-0.5 * Q(t) * diag{Q(t)}^-0.5
-
+    R(t) = diag{Q(t)}^-1 * Q(t) * diag{Q(t)}^-1
 
 Version:
     0
@@ -27,9 +26,10 @@ Thesis: Active vs Passive Investing
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as pltasdasdasd
+from numpy.linalg import inv
 
 ###########################################################
-### DCC(dOmega, dAlpha, dBeta, iN, mS):
+### DCC(dOmega, dAlpha, dBeta, iN, mS, vEps):
 
 def dCC(dOmega, dAlpha, dBeta, iN, mS, vEps):
     """
@@ -40,40 +40,39 @@ def dCC(dOmega, dAlpha, dBeta, iN, mS, vEps):
       ...
 
     Return value:
-      mH      conditional covariance matrix
+      mD      ik dacht eerst deze ook, maar bij nader inzien niet meer 
       mR      conditional correlation matrix of standardized disturbances eps(t)
-      mS      unconditional covariance of epsilons
+      mQ      correlation driving process
 
     """
 
+    # Initialisation
     mQ = np.zeros(shape=(iN,iN))
     mR = np.zeros(shape=(iN,iN))
-    mH = np.zeros(shape=(iN,iN))
 
-    mQ = computeMQ(mQ, iN, dAlpha, dBeta, mS, vEps)
-    mR = computeMR(mR, mQ, iN)
-    mH = computeMH(mH, mR, mD, iN)
+    #mQ = computeMQ(mQ, iN, dAlpha, dBeta, mS, vEps)
+    #mR = computeMR(mR, mQ, iN)
 
-    print(mQ)
-    exit()
-
-    return (mQ, mR, mH)
+    return (mQ, mR)
 
 
-def computeMQ(mQ, iN, dAlpha, dBeta, mS, vEps):
-    for t in range(iN):
-        # mQ[t] = (1 - dAlpha - dBeta) * mS + (dAlpha * (vEps[t-1] * np.transpose(vEps[t-1]))) + (dBeta * mQ[t-1])
+#def computeMQ(mQ, iN, dAlpha, dBeta, mS, vEps):
+    for t in range(iN, iN):
+        for t in range(iN,iN):
+            mQ[t,t] = np.fill_diagonal(mQ, np.multiply((vI - dAlpha - dBeta), mS) 
+        + np.multiply(dAlpha, (vEps[t-1] * np.transpose(vEps[t-1]))))
     return mQ
 
-def computeMR(mR, mQ):
-    for t in range(iN):
-        # mR[t] = np.diagonal((1/mQ[t]) * mQ[t] * np.diagonal(1/mQ[t]))
-    return mR
 
-def computeMH(mH, mR, mD):
-    for t in range(iN):
-        # mH[t] = mD[t] * mR[t] * mD[t]
-    return mH
+#def computeMR(mR, mQ):
+    #mQinv = inv(mQ)    
+
+    #for t in range(iN, iN):
+        #for t in range(iN,iN):
+            #mR[t,t] = np.multiply(np.multiply(np.diagonal(mQinv[t]), mQ[t]),  
+          #np.diagonal(mQinv[t]))
+#    return mR
+
 
 def GenrGARCH(dOmega, dAlpha, dBeta, iN):
     """
@@ -104,21 +103,42 @@ def GenrGARCH(dOmega, dAlpha, dBeta, iN):
 
     return (vY, vS2)
 
-def computemS(iN, vS2, vY):
-    # Create mD
-    #
+
+def computeMS(iN, vS2, vY):
+    """
+    Purpose:
+        Compute mS 
+    
+    Inputs:
+        ...
+        mD      matrix with asset conditional variances on diagonal
+        
+    Return value:
+        mS      matrix with unconditional correlation of the epsilons
+    """   
+    
+    # Define mD and mS 
     mD = np.zeros((iN,iN), float)
+    mS = np.zeros(shape=(iN,iN))
+    
+    # Create mD
     np.fill_diagonal(mD, vS2)
 
-    # Create vEps
-    vEps = vS2 * vY
+    # Create mS
+    mDinv = inv(mD)
+    mS = np.multiply(mDinv, vY)
 
     # Create mS
-    mS = np.zeros(shape=(iN,iN))
-    mS = np.cov(vEps, (np.transpose(vEps)))
-    return (mS, vEps)
+    return (mS)
 
-###########################################################
+def Output(mQ):
+    """
+    Purpose: provide output on screen
+    """
+    
+    print(mQ)
+
+##############################\############################
 ### Output(vY, vS2)
  #def Output(vY, mH):
     # Plot data
@@ -140,6 +160,7 @@ def computemS(iN, vS2, vY):
     # plt.subplots_adjust(left=0.8, bottom=0.8, right=0.9, top=0.9, wspace=0.8, hspace=0.9)
 
   #  plt.show()
+  
 
 
 ###########################################################
@@ -150,18 +171,19 @@ def main():
     dOmega = 0.1
     dAlpha = 0.05
     dBeta = 0.94
+    vEps = np.random.normal(size=iN);
 
     # GenrGARCH
     (vY, vS2)= GenrGARCH(dOmega, dAlpha, dBeta, iN)
 
     # compute mS
-    (mS, vEps) = computemS(iN, vS2, vY)
-
+    (mS) = computeMS(iN, vS2, vY)
+    
     # Estimation - dCC
-    (mQ, mR, mH)= dCC(dOmega, dAlpha, dBeta, iN, mS, vEps)
+    #(mQ, mR)= dCC(dOmega, dAlpha, dBeta, iN, mS, vEps)
 
     # Output
-    Output(mQ, mR, mH)
+    #Output(mQ, mR)
 
 ###########################################################
 ### start main
