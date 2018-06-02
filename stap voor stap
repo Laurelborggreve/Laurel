@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun  1 19:12:53 2018
+
+@author: laurel
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun  1 18:53:51 2018
+
+@author: laurel
+"""
+
+# -*- coding: utf-8 -*-
+"""
+DCC_sim.py
+
+Purpose:
+    Purpose = Simulate data from a multivariate GARCH DCC model
+
+    Model = The Dynamic Conditional Correlation (DCC) model is given by:
+    D(t)^2 = diag{w(i)} + diag{k(i)} * (r(t-1)*r(t-1)') * (diag{labda(i)}*D(t-1)^2)
+    eps_t = D_t^-1 * r_t
+    Q(t) = (1 - alpha - beta) * S + (alpha * eps(t-1) * eps(t-1)') + (beta * Q(t-1))
+    R(t) = diag{Q(t)}^-1 * Q(t) * diag{Q(t)}^-1
+
+Version:
+    0
+
+Date:
+    28-04-2018
+
+@author: Laurel Borggreve
+Msc Econometrics and Operations Research
+Thesis: Active vs Passive Investing
+"""
+###########################################################
+### Imports
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as pltasdasdasd
+from numpy.linalg import inv
+
+
+def GenrGARCH(dOmega, dAlpha, dBeta, iN):
+    """
+    Purpose:
+      Simulate
+
+    Inputs:
+      ...
+
+    Return value:
+      vY      iN vector with observations
+      vS2     iN vector with variances
+    """
+    dS2 = dOmega/(1 - dAlpha - dBeta)
+
+    vEps = np.random.normal(size=iN);
+
+    # Define Time Series Vector
+    vS2 = np.zeros_like(vEps);
+    vY = np.zeros_like(vEps);
+
+    # Estimation
+    for t in range(iN):
+        vY[t] = np.sqrt(dS2) * vEps[t]
+        vS2[t]= dS2
+        # Update
+        dS2 = dOmega + dAlpha * vY[t]**2 + dBeta * dS2
+
+    return (vY, vS2)
+
+
+def computemS(iN, vS2, vY):
+    """
+    Purpose:
+        Compute mS
+    
+    Inputs:
+        ...
+        mD      matrix with asset conditional variances on diagonal
+        
+    Return value:
+        mS      matrix with unconditional correlation of the epsilons
+    """   
+    
+    # Define mD and mS 
+    mD = np.zeros((iN,iN), float)
+    mS = np.zeros(shape=(iN,iN))
+    
+    # Create mD
+    np.fill_diagonal(mD, vS2)
+
+    # Create mS
+    mDinv = inv(mD)
+    mS = np.multiply(mDinv, vY)
+
+    # Create mS
+    return (mS)
+
+
+def Output(mS):
+    """
+    Purpose: provide output on screen
+    """
+    
+    print(mS)
+
+    
+###########################################################
+### DCC(dOmega, dAlpha, dBeta, iN, mS, vEps):
+
+#def dCC(dOmega, dAlpha, dBeta, iN, mS, vEps):
+    """
+    Purpose:
+      Simulate
+
+    Inputs:
+      ...
+
+    Return value
+      mR      conditional correlation matrix of standardized disturbances eps(t)
+      mQ      correlation driving process
+
+    """
+    # Define mQ
+   # mQ = np.zeros(shape=(iN,iN))
+
+    
+    #return(mQ)
+
+def computeMQ(iN, dAlpha, dBeta, mS, vEps):
+    """
+    Purpose: 
+        Compute mQ
+        
+    Inputs:
+        ...
+    
+    Return value:
+        mQ     correlation driving process
+    """
+    
+    # Define mQ 
+    mQ = np.zeros(shape=(iN,iN))
+    
+    # Create vI
+    vI = np.ones(shape=(iN))
+    
+    # Compute mQ 
+    #for t in range(iN, iN):
+     #       mQ[t,t] = np.fill_diagonal(mQ, np.multiply((vI - dAlpha - dBeta), mS) 
+      #      + np.multiply(dAlpha, (vEps[t-1] * np.transpose(vEps[t-1])))     
+    np.fill_diagonal(mQ, np.multiply((vI - dAlpha - dBeta), mS) + 
+                     np.multiply(dAlpha, (vEps[t-1] * np.transpose(vEps[t-1]))))
+         
+
+def Output2(mQ):
+    
+    print(mQ)
+    
+
+def computeMR(iN, mQ):
+    """
+    Purpose: 
+        Compute mR
+        
+    Inputs:
+        ...
+    
+    Return value:
+        mR     conditional correlation matrix of standardized disturbances eps(t)
+    """
+    
+    # Define mR
+    mR = np.zeros(shape=(iN,iN))
+    mQinv = inv(mQ)
+    
+    # Compute mR
+    for t in range(iN, iN):
+        mR[t,t] = np.multiply(np.multiply(np.diagonal(mQinv[t]), mQ[t]),  
+        np.diagonal(mQinv[t]))
+    return mR
+
+def Output3(mR):
+    
+    print(mR)
+
+
+
+###########################################################
+### main
+def main():
+    # Magic numbers
+    iN = 10000
+    dOmega = 0.1
+    dAlpha = 0.05
+    dBeta = 0.94
+    vEps = np.random.normal(size=iN);
+
+    # GenrGARCH
+    (vY, vS2)= GenrGARCH(dOmega, dAlpha, dBeta, iN)
+
+    # compute mS
+    #(mS) = computemS(iN, vS2, vY)
+
+    # Estimation - DCC
+    #(mQ) = dCC(dOmega, dAlpha, dBeta, iN, mS, vEps)
+    (mS) = computemS(iN, vS2, vY)
+    (mQ) = computeMQ(iN, dAlpha, dBeta, mS, vEps)
+    (mR) = computeMR(iN, mQ)
+    
+    
+    #Output
+    #Output(mQ, mR, mH)
+    Output(mS)
+    Output2(mQ)
+    Output3(mR) 
+
+###########################################################
+### start main
+if __name__ == "__main__":
+    main()
